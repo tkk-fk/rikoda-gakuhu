@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>リコーダー アプリ（ジャーマン式）</title>
+<link href="https://fonts.googleapis.com/css2?family=Kaisei+Decol:wght@400;700&family=Kosugi+Maru&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --hole-open: #fff8f0;
+    --hole-closed: #2c1a0e;
+    --bg: #FFF9F0;
+    --accent: #5B3A9F;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Kosugi Maru', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 16px 12px 40px;
+    background-image:
+      radial-gradient(circle at 10% 20%, #ffe0f0 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, #e0f0ff 0%, transparent 40%),
+      radial-gradient(circle at 50% 50%, #fff5e0 0%, transparent 60%);
+  }
+  h1 {
+    font-family: 'Kaisei Decol', serif;
+    font-size: clamp(1.4rem, 5vw, 2.4rem);
+    color: var(--accent); text-align: center; margin-bottom: 4px;
+    text-shadow: 3px 3px 0 #FFD700, 5px 5px 0 rgba(255,215,0,0.3);
+    letter-spacing: 0.05em;
+  }
+  .subtitle { font-size: 0.88rem; color: #999; margin-bottom: 6px; text-align: center; }
+  .german-badge {
+    background: linear-gradient(135deg,#5B3A9F,#9B59B6);
+    color: #fff; font-size: 0.75rem; padding: 3px 14px;
+    border-radius: 20px; margin-bottom: 14px; letter-spacing: 0.08em;
+  }
+
+  /* ===== Mode tabs ===== */
+  .mode-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+  .mode-btn {
+    padding: 10px 24px; border-radius: 24px; border: 2px solid #ddd;
+    background: #fff; font-family: 'Kosugi Maru', sans-serif;
+    font-size: 0.95rem; cursor: pointer; color: #888;
+    transition: all 0.15s; font-weight: 700;
+  }
+  .mode-btn.active {
+    background: linear-gradient(135deg,#5B3A9F,#9B59B6);
+    color: #fff; border-color: #5B3A9F;
+    box-shadow: 0 4px 12px rgba(91,58,159,0.3);
+  }
+
+  /* ===== SINGLE NOTE MODE ===== */
+  #singleMode { width: 100%; max-width: 580px; }
+  .octave-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tab-btn {
+    padding: 6px 18px; border-radius: 20px; border: 2px solid #ddd;
+    background: #fff; font-family: 'Kosugi Maru', sans-serif;
+    font-size: 0.85rem; cursor: pointer; color: #888; transition: all 0.15s;
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg,#5B3A9F,#9B59B6);
+    color: #fff; border-color: #5B3A9F;
+  }
+  .note-panel { display: none; flex-direction: column; align-items: center; gap: 8px; width: 100%; max-width: 580px; margin-bottom: 20px; }
+  .note-panel.active { display: flex; }
+  .row-label { font-size: 0.75rem; color: #bbb; letter-spacing: 0.1em; align-self: flex-start; margin-left: 4px; }
+  .btn-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
+  .note-btn {
+    width: 58px; height: 58px; border-radius: 50%; border: none;
+    font-family: 'Kaisei Decol', serif; font-size: 1.15rem; font-weight: 700;
+    cursor: pointer; transition: transform 0.12s, box-shadow 0.12s;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.22); color: #fff;
+    position: relative; top: 0; line-height: 1.15;
+  }
+  .note-btn:active, .note-btn.active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,0.2); top: 4px; }
+  .note-btn.active { outline: 4px solid #2c1a0e; }
+  .note-btn:hover:not(.active) { transform: scale(1.08); }
+  .n-do  { background: linear-gradient(135deg,#FF6B6B,#e74c3c); }
+  .n-re  { background: linear-gradient(135deg,#FF9A3C,#e67e22); }
+  .n-mi  { background: linear-gradient(135deg,#FFD93D,#f39c12); color:#553300!important; }
+  .n-fa  { background: linear-gradient(135deg,#6BCB77,#27ae60); }
+  .n-so  { background: linear-gradient(135deg,#4D96FF,#2980b9); }
+  .n-ra  { background: linear-gradient(135deg,#9B5DE5,#8e44ad); }
+  .n-si  { background: linear-gradient(135deg,#FF69B4,#c0392b); }
+  .n-do2 { background: linear-gradient(135deg,#FF6B6B,#c0392b);   border:3px dashed #fff; }
+  .n-re2 { background: linear-gradient(135deg,#FF9A3C,#c06010);   border:3px dashed #fff; }
+  .n-mi2 { background: linear-gradient(135deg,#FFD93D,#b07a00);   border:3px dashed #553300; color:#553300!important; }
+  .n-fa2 { background: linear-gradient(135deg,#6BCB77,#1a7040);   border:3px dashed #fff; }
+  .n-so2 { background: linear-gradient(135deg,#4D96FF,#1a5fa0);   border:3px dashed #fff; }
+  .n-ra2 { background: linear-gradient(135deg,#9B5DE5,#5a2090);   border:3px dashed #fff; }
+  .n-acc  { background: linear-gradient(135deg,#4a4a6a,#2d2d4a); font-size: 0.85rem; }
+  .n-acc2 { background: linear-gradient(135deg,#3a3a5a,#1e1e38); border: 3px dashed #9988cc; font-size: 0.85rem; }
+
+  .main-display { display: flex; flex-direction: column; align-items: center; gap: 18px; width: 100%; max-width: 480px; }
+  .note-label-box { background: #fff; border-radius: 24px; padding: 10px 36px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; }
+  .note-label-big { font-family: 'Kaisei Decol', serif; font-size: clamp(1.6rem, 7vw, 2.8rem); font-weight: 700; line-height: 1; }
+  .note-label-kana { font-size: 0.9rem; color: #888; margin-top: 4px; }
+  .note-label-enharmonic { font-size: 0.78rem; color: #bbb; margin-top: 2px; }
+  .recorder-wrap { background: #fff; border-radius: 28px; padding: 20px 28px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .recorder-title { font-size: 0.82rem; color: #bbb; margin-bottom: 12px; letter-spacing: 0.1em; }
+  .recorder-svg { width: 100%; max-width: 300px; height: auto; }
+  .legend { display: flex; gap: 14px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+  .legend-item { display:flex; align-items:center; gap:5px; font-size:0.82rem; color:#555; }
+  .legend-circle { width:20px; height:20px; border-radius:50%; border:2px solid #8B6343; flex-shrink:0; }
+  .legend-open   { background: var(--hole-open); }
+  .legend-closed { background: var(--hole-closed); }
+  .legend-half   { background: linear-gradient(180deg, var(--hole-closed) 50%, var(--hole-open) 50%); }
+  .hint-box { background: linear-gradient(135deg,#667eea18,#764ba218); border: 2px solid #9B59B6; border-radius: 18px; padding: 12px 20px; text-align: center; width: 100%; }
+  .hint-title { font-size:0.78rem; color:#9B59B6; margin-bottom:5px; font-weight:700; }
+  .hint-text  { font-size:0.95rem; color:#333; line-height:1.75; }
+
+  /* ===== SCORE MODE ===== */
+  #scoreMode { display: none; width: 100%; max-width: 800px; }
+  #scoreMode.active { display: block; }
+
+  .score-input-area {
+    background: #fff; border-radius: 20px; padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 16px;
+  }
+  .score-input-label {
+    font-size: 0.9rem; color: #666; margin-bottom: 10px; display: block;
+  }
+  .score-input-label span { color: var(--accent); font-weight: 700; }
+
+  .note-input-row {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  }
+  .score-textarea {
+    flex: 1; min-width: 200px;
+    border: 2px solid #ddd; border-radius: 12px;
+    padding: 10px 14px; font-family: 'Kaisei Decol', serif;
+    font-size: 1.2rem; color: #333; outline: none;
+    transition: border-color 0.15s; resize: none; height: 52px;
+    line-height: 1.4;
+  }
+  .score-textarea:focus { border-color: var(--accent); }
+  .score-textarea::placeholder { color: #ccc; font-size: 1rem; }
+
+  .score-play-btn {
+    padding: 12px 24px; border-radius: 16px; border: none;
+    background: linear-gradient(135deg,#5B3A9F,#9B59B6);
+    color: #fff; font-family: 'Kosugi Maru', sans-serif;
+    font-size: 1rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 0 #3a2070; transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .score-play-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #3a2070; }
+  .score-clear-btn {
+    padding: 12px 16px; border-radius: 16px; border: 2px solid #ddd;
+    background: #fff; color: #aaa; font-family: 'Kosugi Maru', sans-serif;
+    font-size: 0.9rem; cursor: pointer; transition: all 0.12s;
+  }
+  .score-clear-btn:hover { border-color: #f87; color: #f87; }
+
+  /* Quick note input buttons */
+  .quick-notes {
+    display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px;
+  }
+  .quick-btn {
+    padding: 5px 10px; border-radius: 10px; border: none;
+    font-family: 'Kaisei Decol', serif; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; color: #fff; transition: transform 0.1s, opacity 0.1s;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.2);
+  }
+  .quick-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
+  .quick-btn:hover { opacity: 0.85; }
+  .qb-do  { background: linear-gradient(135deg,#FF6B6B,#e74c3c); }
+  .qb-re  { background: linear-gradient(135deg,#FF9A3C,#e67e22); }
+  .qb-mi  { background: linear-gradient(135deg,#FFD93D,#f39c12); color:#553300!important; }
+  .qb-fa  { background: linear-gradient(135deg,#6BCB77,#27ae60); }
+  .qb-so  { background: linear-gradient(135deg,#4D96FF,#2980b9); }
+  .qb-ra  { background: linear-gradient(135deg,#9B5DE5,#8e44ad); }
+  .qb-si  { background: linear-gradient(135deg,#FF69B4,#c0392b); }
+  .qb-do2 { background: linear-gradient(135deg,#FF6B6B,#c0392b); border:2px dashed rgba(255,255,255,0.6); }
+  .qb-re2 { background: linear-gradient(135deg,#FF9A3C,#c06010); border:2px dashed rgba(255,255,255,0.6); }
+  .qb-mi2 { background: linear-gradient(135deg,#FFD93D,#b07a00); border:2px dashed rgba(80,50,0,0.4); color:#553300!important; }
+  .qb-fa2 { background: linear-gradient(135deg,#6BCB77,#1a7040); border:2px dashed rgba(255,255,255,0.6); }
+  .qb-so2 { background: linear-gradient(135deg,#4D96FF,#1a5fa0); border:2px dashed rgba(255,255,255,0.6); }
+  .qb-ra2 { background: linear-gradient(135deg,#9B5DE5,#5a2090); border:2px dashed rgba(255,255,255,0.6); }
+  .qb-acc { background: linear-gradient(135deg,#4a4a6a,#2d2d4a); font-size:0.78rem; }
+  .qb-sp  { background: #ddd; color: #888; font-size: 1rem; }
+
+  /* Score display */
+  .score-error {
+    background: #fff0f0; border: 2px solid #f87; border-radius: 12px;
+    padding: 10px 16px; color: #c00; font-size: 0.9rem; margin-bottom: 12px;
+  }
+  .score-result { width: 100%; }
+  .score-info-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+  }
+  .score-count { font-size: 0.9rem; color: #888; }
+  .score-count span { color: var(--accent); font-weight: 700; font-size: 1.1rem; }
+
+  /* Scroll wrapper for the score */
+  .score-scroll {
+    overflow-x: auto; padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .score-grid {
+    display: flex; flex-wrap: wrap; gap: 10px;
+    padding: 16px; background: #fff;
+    border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    min-width: min-content;
+  }
+
+  /* Individual note card in score */
+  .score-card {
+    display: flex; flex-direction: column; align-items: center;
+    cursor: pointer; transition: transform 0.15s;
+    position: relative;
+  }
+  .score-card:hover { transform: scale(1.04); }
+  .score-card.highlighted .sc-recorder { outline: 4px solid #FFD700; border-radius: 12px; }
+
+  .sc-num {
+    font-size: 0.65rem; color: #ccc; margin-bottom: 2px;
+    font-family: 'Kosugi Maru', sans-serif;
+  }
+  .sc-name {
+    font-family: 'Kaisei Decol', serif; font-size: 1rem; font-weight: 700;
+    margin-bottom: 4px; text-align: center; line-height: 1.1;
+  }
+  .sc-recorder {
+    border-radius: 10px; overflow: hidden;
+    background: #fff; padding: 4px;
+  }
+  .sc-recorder svg { display: block; }
+
+  /* Highlight panel */
+  .highlight-panel {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(255,255,255,0.97); box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    padding: 16px 20px; z-index: 100;
+    flex-direction: row; align-items: center; gap: 20px;
+    border-top: 3px solid var(--accent);
+  }
+  .highlight-panel.active { display: flex; }
+  .hp-close {
+    position: absolute; top: 10px; right: 14px;
+    background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #aaa;
+  }
+  .hp-recorder { flex-shrink: 0; }
+  .hp-info { flex: 1; }
+  .hp-name { font-family: 'Kaisei Decol', serif; font-size: 1.8rem; font-weight: 700; line-height: 1; }
+  .hp-kana { font-size: 0.9rem; color: #888; margin-top: 2px; }
+  .hp-hint { font-size: 0.88rem; color: #555; margin-top: 6px; line-height: 1.6; }
+  .hp-nav { display: flex; gap: 8px; margin-top: 8px; }
+  .hp-nav-btn {
+    padding: 6px 16px; border-radius: 12px; border: 2px solid #ddd;
+    background: #fff; font-size: 0.85rem; cursor: pointer; color: #666;
+    font-family: 'Kosugi Maru', sans-serif; transition: all 0.12s;
+  }
+  .hp-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  @keyframes pop {
+    0%   { transform: scale(0.85); opacity: 0; }
+    60%  { transform: scale(1.04); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .recorder-wrap { animation: pop 0.28s ease; }
+  .score-grid { animation: pop 0.28s ease; }
+
+  .welcome-msg { text-align:center; color:#bbb; font-size:1.05rem; padding:40px 20px; }
+  .welcome-msg .big-emoji { font-size:3.5rem; display:block; margin-bottom:10px; }
+
+  /* ===== Print button ===== */
+  .print-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 14px; padding: 12px 16px;
+    background: linear-gradient(135deg,#f0eaff,#e8f4ff);
+    border-radius: 16px; border: 2px solid #c8b8f0;
+  }
+  .print-title-input {
+    flex: 1; min-width: 160px;
+    border: 2px solid #c8b8f0; border-radius: 10px;
+    padding: 8px 12px; font-family: 'Kosugi Maru', sans-serif;
+    font-size: 0.95rem; color: #333; outline: none;
+    background: #fff;
+  }
+  .print-title-input:focus { border-color: #5B3A9F; }
+  .print-btn {
+    padding: 10px 22px; border-radius: 14px; border: none;
+    background: linear-gradient(135deg,#27AE60,#1a8a4a);
+    color: #fff; font-family: 'Kosugi Maru', sans-serif;
+    font-size: 0.95rem; font-weight: 700; cursor: pointer;
+    box-shadow: 0 4px 0 #166638; transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .print-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #166638; }
+
+  /* print header hidden on screen */
+  .print-header { display: none; }
+
+  /* ===== PRINT STYLES ===== */
+  @media print {
+    @page { size: A4; margin: 12mm 10mm; }
+    body {
+      background: none !important; padding: 0 !important;
+      align-items: flex-start !important; display: block !important;
+    }
+    h1, .subtitle, .german-badge, .mode-tabs,
+    #singleMode, .score-input-area, .score-error,
+    .score-info-bar, .highlight-panel, .print-bar { display: none !important; }
+    #scoreMode { display: block !important; }
+    #scoreResult { display: block !important; }
+
+    .print-header {
+      display: block !important;
+      margin-bottom: 6mm;
+      border-bottom: 2px solid #5B3A9F;
+      padding-bottom: 3mm;
+    }
+    .print-header-title {
+      font-family: 'Kaisei Decol', serif;
+      font-size: 16pt; font-weight: 700; color: #5B3A9F;
+    }
+    .print-header-sub { font-size: 8pt; color: #888; margin-top: 1mm; }
+
+    .score-grid {
+      display: flex !important; flex-wrap: wrap !important;
+      gap: 5mm !important; padding: 0 !important;
+      box-shadow: none !important; border-radius: 0 !important;
+      background: none !important; animation: none !important;
+    }
+    .score-card { break-inside: avoid; cursor: default; transform: none !important; }
+    .score-card:hover { transform: none !important; }
+    .sc-num { color: #bbb !important; }
+    .sc-name { font-size: 10pt !important; }
+    .sc-recorder svg { width: 55px !important; height: auto !important; }
+  }
+
+</style>
+</head>
+<body>
+
+<h1>🎵 リコーダー アプリ</h1>
+<p class="subtitle">おとをえらぶと、おさえるあなが わかります</p>
+<div class="german-badge">🎼 ジャーマン式（ドイツ式）</div>
+
+<!-- Mode tabs -->
+<div class="mode-tabs">
+  <button class="mode-btn active" onclick="switchMode('single')">🎵 いちおんモード</button>
+  <button class="mode-btn"        onclick="switchMode('score')">🎼 がくふモード</button>
+</div>
+
+<!-- ===== SINGLE NOTE MODE ===== -->
+<div id="singleMode">
+  <div class="octave-tabs">
+    <button class="tab-btn active" onclick="switchPanel(event,'p1')">１オクターブめ</button>
+    <button class="tab-btn"        onclick="switchPanel(event,'p2')">２オクターブめ</button>
+  </div>
+  <div class="note-panel active" id="p1">
+    <div class="row-label">♩ ナチュラル</div>
+    <div class="btn-row">
+      <button class="note-btn n-do" onclick="selectNote('ド')"   id="btn-ド">ド</button>
+      <button class="note-btn n-re" onclick="selectNote('レ')"   id="btn-レ">レ</button>
+      <button class="note-btn n-mi" onclick="selectNote('ミ')"   id="btn-ミ">ミ</button>
+      <button class="note-btn n-fa" onclick="selectNote('ファ')" id="btn-ファ">ファ</button>
+      <button class="note-btn n-so" onclick="selectNote('ソ')"   id="btn-ソ">ソ</button>
+      <button class="note-btn n-ra" onclick="selectNote('ラ')"   id="btn-ラ">ラ</button>
+      <button class="note-btn n-si" onclick="selectNote('シ')"   id="btn-シ">シ</button>
+    </div>
+    <div class="row-label">♯ / ♭</div>
+    <div class="btn-row">
+      <button class="note-btn n-acc" onclick="selectNote('ド♯')"  id="btn-ド♯">ド♯<br><span style="font-size:0.7rem">レ♭</span></button>
+      <button class="note-btn n-acc" onclick="selectNote('レ♯')"  id="btn-レ♯">レ♯<br><span style="font-size:0.7rem">ミ♭</span></button>
+      <button class="note-btn n-acc" onclick="selectNote('ファ♯')" id="btn-ファ♯">ファ♯<br><span style="font-size:0.7rem">ソ♭</span></button>
+      <button class="note-btn n-acc" onclick="selectNote('ソ♯')"  id="btn-ソ♯">ソ♯<br><span style="font-size:0.7rem">ラ♭</span></button>
+      <button class="note-btn n-acc" onclick="selectNote('ラ♯')"  id="btn-ラ♯">ラ♯<br><span style="font-size:0.7rem">シ♭</span></button>
+    </div>
+  </div>
+  <div class="note-panel" id="p2">
+    <div class="row-label">♩ ナチュラル</div>
+    <div class="btn-row">
+      <button class="note-btn n-do2" onclick="selectNote('高いド')"  id="btn-高いド">高<br>ド</button>
+      <button class="note-btn n-re2" onclick="selectNote('高いレ')"  id="btn-高いレ">高<br>レ</button>
+      <button class="note-btn n-mi2" onclick="selectNote('高いミ')"  id="btn-高いミ">高<br>ミ</button>
+      <button class="note-btn n-fa2" onclick="selectNote('高いファ')" id="btn-高いファ">高<br>ファ</button>
+      <button class="note-btn n-so2" onclick="selectNote('高いソ')"  id="btn-高いソ">高<br>ソ</button>
+      <button class="note-btn n-ra2" onclick="selectNote('高いラ')"  id="btn-高いラ">高<br>ラ</button>
+    </div>
+    <div class="row-label">♯ / ♭</div>
+    <div class="btn-row">
+      <button class="note-btn n-acc2" onclick="selectNote('高いド♯')"  id="btn-高いド♯">高<br>ド♯<br><span style="font-size:0.65rem">レ♭</span></button>
+      <button class="note-btn n-acc2" onclick="selectNote('高いレ♯')"  id="btn-高いレ♯">高<br>レ♯<br><span style="font-size:0.65rem">ミ♭</span></button>
+      <button class="note-btn n-acc2" onclick="selectNote('高いファ♯')" id="btn-高いファ♯">高<br>ファ♯<br><span style="font-size:0.65rem">ソ♭</span></button>
+      <button class="note-btn n-acc2" onclick="selectNote('高いソ♯')"  id="btn-高いソ♯">高<br>ソ♯<br><span style="font-size:0.65rem">ラ♭</span></button>
+    </div>
+  </div>
+  <div class="main-display" id="mainDisplay">
+    <div class="welcome-msg">
+      <span class="big-emoji">👆</span>
+      うえのボタンで おとをえらんでね！
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCORE MODE ===== -->
+<div id="scoreMode">
+<!-- print header (hidden on screen, shown on print) -->
+<div class="print-header" id="printHeader">
+  <div class="print-header-title" id="printTitle">リコーダー うんざしシート</div>
+  <div class="print-header-sub">ジャーマン式 ／ ● おさえる　○ あける　◑ ピンホール</div>
+</div>
+  <div class="score-input-area">
+    <label class="score-input-label">
+      🎼 おとを にゅうりょく してね<br>
+      <span>（れい：ドドソソララソ　ファファミミレレド）</span>
+    </label>
+    <div class="note-input-row">
+      <textarea class="score-textarea" id="scoreInput"
+        placeholder="ドレミファソラシ　高いド　ド♯　など…"
+        oninput="autoResize(this)"></textarea>
+      <button class="score-play-btn" onclick="generateScore()">🎵 ひょうじ</button>
+      <button class="score-clear-btn" onclick="clearScore()">クリア</button>
+    </div>
+    <!-- Quick input buttons -->
+    <div class="quick-notes" id="quickNotes"></div>
+  </div>
+  <div id="scoreError" class="score-error" style="display:none"></div>
+  <div class="score-result" id="scoreResult"></div>
+</div>
+
+<!-- Highlight panel (bottom sheet) -->
+<div class="highlight-panel" id="highlightPanel">
+  <button class="hp-close" onclick="closeHighlight()">✕</button>
+  <div class="hp-recorder" id="hpRecorder"></div>
+  <div class="hp-info">
+    <div class="hp-name" id="hpName"></div>
+    <div class="hp-kana" id="hpKana"></div>
+    <div class="hp-hint" id="hpHint"></div>
+    <div class="hp-nav">
+      <button class="hp-nav-btn" onclick="navHighlight(-1)">◀ まえ</button>
+      <button class="hp-nav-btn" onclick="navHighlight(1)">つぎ ▶</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================
+   NOTES DATA  (German fingering)
+   holes[0]=thumb, [1-3]=left hand, [4-7]=right hand
+   'closed'|'open'|'half'
+   ===================================================== */
+const NOTES = {
+  'ド':    { label:'ド',    kana:'ど（C４）',      enharmonic:'', color:'#E74C3C', holes:['closed','closed','closed','closed','closed','closed','closed','closed'], hint:'🤚 ぜんぶの あなを ふさごう！' },
+  'レ':    { label:'レ',    kana:'れ（D４）',      enharmonic:'', color:'#E67E22', holes:['closed','closed','closed','closed','closed','closed','closed','open'],   hint:'🤚 いちばん したの あな（７番）だけ あけます' },
+  'ミ':    { label:'ミ',    kana:'み（E４）',      enharmonic:'', color:'#D4AC00', holes:['closed','closed','closed','closed','closed','closed','open','open'],    hint:'🤚 したの ２つ（６・７番）を あけます' },
+  'ファ':  { label:'ファ',  kana:'ふぁ（F４）',    enharmonic:'', color:'#27AE60', holes:['closed','closed','closed','closed','open','closed','open','open'],     hint:'🎵 ４番を あけて、５番を おさえます（ジャーマン式）' },
+  'ソ':    { label:'ソ',    kana:'そ（G４）',      enharmonic:'', color:'#2980B9', holes:['closed','closed','closed','closed','open','open','open','open'],      hint:'🤚 みぎての ４つを ぜんぶ あけます' },
+  'ラ':    { label:'ラ',    kana:'ら（A４）',      enharmonic:'', color:'#8E44AD', holes:['closed','closed','closed','open','open','open','open','open'],       hint:'🤚 ひだり３番と みぎ ぜんぶ あけます' },
+  'シ':    { label:'シ',    kana:'し（B４）',      enharmonic:'', color:'#C0392B', holes:['closed','closed','open','open','open','open','open','open'],        hint:'🤚 ひだりの おやゆびと １番だけ おさえます' },
+  'ド♯':  { label:'ド♯',  kana:'ど♯（C♯４）',  enharmonic:'レ♭とおなじ', color:'#6655aa', holes:['closed','closed','closed','closed','closed','closed','open','closed'], hint:'🎵 ６番だけ あけます' },
+  'レ♯':  { label:'レ♯',  kana:'れ♯（D♯４）',  enharmonic:'ミ♭とおなじ', color:'#6655aa', holes:['closed','closed','closed','closed','closed','open','closed','closed'],  hint:'🎵 ５番を あけます' },
+  'ファ♯':{ label:'ファ♯',kana:'ふぁ♯（F♯４）',enharmonic:'ソ♭とおなじ', color:'#6655aa', holes:['closed','closed','closed','closed','open','open','closed','open'],   hint:'🎵 ４・５番を あけて、６番を おさえます' },
+  'ソ♯':  { label:'ソ♯',  kana:'そ♯（G♯４）',  enharmonic:'ラ♭とおなじ', color:'#6655aa', holes:['closed','closed','closed','closed','open','open','open','closed'],   hint:'🎵 ４・５・６番を あけて、７番を おさえます' },
+  'ラ♯':  { label:'ラ♯',  kana:'ら♯（A♯４）',  enharmonic:'シ♭とおなじ', color:'#6655aa', holes:['closed','closed','closed','open','open','open','closed','open'],    hint:'🎵 ひだり３番・４・５番あけ、６番おさえ、７番あけ' },
+  '高いド':   { label:'高いド',   kana:'たかいど（C５）',   enharmonic:'', color:'#E74C3C', holes:['closed','open','closed','open','open','open','open','open'],       hint:'🌟 おやゆびと なかゆび（２番）だけ！' },
+  '高いレ':   { label:'高いレ',   kana:'たかいれ（D５）',   enharmonic:'', color:'#E67E22', holes:['half','closed','closed','closed','closed','closed','closed','open'],  hint:'🌟 ピンホール＋「レ」と おなじ ゆびおき' },
+  '高いミ':   { label:'高いミ',   kana:'たかいみ（E５）',   enharmonic:'', color:'#D4AC00', holes:['half','closed','closed','closed','closed','closed','open','open'],   hint:'🌟 ピンホール＋「ミ」と おなじ ゆびおき' },
+  '高いファ': { label:'高いファ', kana:'たかいふぁ（F５）', enharmonic:'', color:'#27AE60', holes:['half','closed','closed','closed','open','closed','open','open'],    hint:'🌟 ピンホール＋ジャーマン式「ファ」と おなじ' },
+  '高いソ':   { label:'高いソ',   kana:'たかいそ（G５）',   enharmonic:'', color:'#2980B9', holes:['half','closed','closed','closed','open','open','open','open'],      hint:'🌟 ピンホール＋みぎては ぜんぶ あけます' },
+  '高いラ':   { label:'高いラ',   kana:'たかいら（A５）',   enharmonic:'', color:'#8E44AD', holes:['half','closed','closed','open','open','open','open','open'],       hint:'🌟 ピンホール＋ひだり３番・みぎぜんぶ あけます' },
+  '高いド♯':  { label:'高いド♯',  kana:'たかいど♯（C♯５）', enharmonic:'高いレ♭とおなじ', color:'#5544aa', holes:['half','closed','closed','closed','closed','closed','open','closed'],hint:'🌟 ピンホール＋６番だけ あけます' },
+  '高いレ♯':  { label:'高いレ♯',  kana:'たかいれ♯（D♯５）', enharmonic:'高いミ♭とおなじ', color:'#5544aa', holes:['half','closed','closed','closed','closed','open','closed','closed'],hint:'🌟 ピンホール＋５番を あけます' },
+  '高いファ♯':{ label:'高いファ♯',kana:'たかいふぁ♯（F♯５）',enharmonic:'高いソ♭とおなじ', color:'#5544aa', holes:['half','closed','closed','closed','open','open','closed','open'],  hint:'🌟 ピンホール＋４・５番あけ、６番おさえ' },
+  '高いソ♯':  { label:'高いソ♯',  kana:'たかいそ♯（G♯５）', enharmonic:'高いラ♭とおなじ', color:'#5544aa', holes:['half','closed','closed','closed','open','open','open','closed'],  hint:'🌟 ピンホール＋４・５・６番あけ、７番おさえ' },
+};
+
+/* ----- parse input string into array of note names ----- */
+// Tokenise: greedy match longest known note name
+const ALL_NOTE_KEYS = Object.keys(NOTES).sort((a,b)=>b.length-a.length);
+
+function parseScore(text) {
+  // Replace various separators with spaces, normalise
+  let s = text
+    .replace(/[、。　,，\n\r\t]+/g,' ')
+    .replace(/\s+/g,' ').trim();
+  const result = [];
+  const errors = [];
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] === ' ') { i++; continue; }
+    let matched = false;
+    for (const key of ALL_NOTE_KEYS) {
+      if (s.startsWith(key, i)) {
+        result.push(key);
+        i += key.length;
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      // collect unknown token until next space
+      let j = i+1;
+      while (j < s.length && s[j] !== ' ') j++;
+      errors.push(s.slice(i,j));
+      i = j;
+    }
+  }
+  return { result, errors };
+}
+
+/* ----- SVG builder (compact version for score cards) ----- */
+function buildRecorderSVG(holes, accentColor, compact=false) {
+  const scale  = compact ? 0.38 : 1;
+  const W0=230, H0=570, cx0=86;
+  const W = Math.round(W0*scale), H = Math.round(H0*scale);
+  const cx = Math.round(cx0*scale);
+  const bodyX0=64, bodyW0=44, mouthH0=64, bodyH0=480;
+  const bodyX  = Math.round(bodyX0*scale);
+  const bodyW  = Math.round(bodyW0*scale);
+  const mouthH = Math.round(mouthH0*scale);
+  const bodyTop= mouthH;
+  const bodyH  = Math.round(bodyH0*scale);
+  const holeOffsets0=[58,106,154,214,262,310,358];
+  const holeR0=12;
+  const thumbX0=116, thumbY0=134;
+  const holeR  = Math.max(2, Math.round(holeR0*scale));
+  const thumbX = Math.round(thumbX0*scale);
+  const thumbY = Math.round(thumbY0*scale);
+  const frontHoleY = holeOffsets0.map(g=>Math.round((mouthH0+g)*scale));
+
+  function hc(x,y,state,r) {
+    r = r||holeR;
+    if(state==='closed') return `<circle cx="${x}" cy="${y}" r="${r}" fill="#2c1a0e" stroke="#5a3520" stroke-width="${Math.max(1,r/6)}"/>`;
+    if(state==='open')   return `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff8f0" stroke="#8B6343" stroke-width="${Math.max(1,r/6)}"/>`;
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff8f0" stroke="#8B6343" stroke-width="${Math.max(1,r/6)}"/>
+      <path d="M${x-r} ${y} A${r} ${r} 0 0 1 ${x+r} ${y} Z" fill="#2c1a0e"/>
+      <circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#8B6343" stroke-width="${Math.max(1,r/6)}"/>`;
+  }
+  function nl(x,y,n,state) {
+    if(compact) return '';
+    const col=state==='closed'?'#fff':'#8B6343';
+    return `<text x="${x}" y="${y+4.5}" text-anchor="middle" font-size="11" font-family="Kosugi Maru" fill="${col}" font-weight="bold">${n}</text>`;
+  }
+  function glow(x,y,state,r) {
+    if(state==='open') return '';
+    r=r||holeR;
+    return `<circle cx="${x}" cy="${y}" r="${r+Math.max(2,Math.round(7*scale))}" fill="${accentColor}" opacity="0.18"/>`;
+  }
+  function bracket(y1,y2,label) {
+    if(compact) return '';
+    const bx=bodyX-10;
+    return `<line x1="${bx}" y1="${y1}" x2="${bx-8}" y2="${y1}" stroke="#ddd" stroke-width="1.5"/>
+      <line x1="${bx}" y1="${y1}" x2="${bx}" y2="${y2}" stroke="#ddd" stroke-width="1.5"/>
+      <line x1="${bx}" y1="${y2}" x2="${bx-8}" y2="${y2}" stroke="#ddd" stroke-width="1.5"/>
+      <text x="${bx-10}" y="${(y1+y2)/2+4}" text-anchor="end" font-size="11" font-family="Kosugi Maru" fill="#bbb">${label}</text>`;
+  }
+  const gid = 'g'+Math.random().toString(36).slice(2,6);
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wg${gid}" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#c4903a"/>
+      <stop offset="35%" stop-color="#e8c87a"/>
+      <stop offset="65%" stop-color="#c8a060"/>
+      <stop offset="100%" stop-color="#a07538"/>
+    </linearGradient>
+    <linearGradient id="mg${gid}" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7a5530"/>
+      <stop offset="50%" stop-color="#a07848"/>
+      <stop offset="100%" stop-color="#6a4520"/>
+    </linearGradient>
+  </defs>
+  <rect x="${cx-Math.round(13*scale)}" y="${Math.round(5*scale)}" width="${Math.round(26*scale)}" height="${mouthH}" rx="${Math.round(7*scale)}" fill="url(#mg${gid})" stroke="#5a3520" stroke-width="1"/>
+  <rect x="${bodyX}" y="${bodyTop}" width="${bodyW}" height="${bodyH}" rx="${Math.round(12*scale)}" fill="url(#wg${gid})" stroke="#8B6343" stroke-width="${Math.max(1,Math.round(2*scale))}"/>
+  <ellipse cx="${cx}" cy="${bodyTop+bodyH}" rx="${Math.round(22*scale)}" ry="${Math.round(7*scale)}" fill="#b08040" stroke="#8B6343" stroke-width="1"/>
+  ${frontHoleY.map((y,i)=>glow(cx,y,holes[i+1])).join('')}
+  ${glow(thumbX,thumbY,holes[0],Math.max(2,Math.round(10*scale)))}
+  ${hc(thumbX,thumbY,holes[0],Math.max(2,Math.round(10*scale)))}
+  ${!compact?`<text x="${thumbX+Math.round(16*scale)}" y="${thumbY+2}" font-size="10" font-family="Kosugi Maru" fill="#999" text-anchor="start">おや</text>
+  <text x="${thumbX+Math.round(16*scale)}" y="${thumbY+14}" font-size="10" font-family="Kosugi Maru" fill="#999" text-anchor="start">ゆび</text>`:''}
+  ${frontHoleY.map((y,i)=>hc(cx,y,holes[i+1])).join('')}
+  ${frontHoleY.map((y,i)=>nl(cx,y,i+1,holes[i+1])).join('')}
+  ${bracket(frontHoleY[0]-holeR,frontHoleY[2]+holeR,'ひだり')}
+  ${bracket(frontHoleY[3]-holeR,frontHoleY[6]+holeR,'みぎ')}
+</svg>`;
+}
+
+/* ===== MODE SWITCH ===== */
+function switchMode(mode) {
+  document.querySelectorAll('.mode-btn').forEach((b,i)=>{
+    b.classList.toggle('active', (i===0&&mode==='single')||(i===1&&mode==='score'));
+  });
+  document.getElementById('singleMode').style.display = mode==='single'?'':'none';
+  const sm = document.getElementById('scoreMode');
+  sm.style.display = mode==='score'?'block':'none';
+  closeHighlight();
+}
+
+/* ===== SINGLE NOTE MODE ===== */
+function switchPanel(e, panelId) {
+  document.querySelectorAll('.note-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(panelId).classList.add('active');
+  e.target.classList.add('active');
+}
+
+function selectNote(noteName) {
+  document.querySelectorAll('.note-btn').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('btn-'+noteName);
+  if(btn) btn.classList.add('active');
+  const note=NOTES[noteName];
+  const enharmonicHTML=note.enharmonic?`<div class="note-label-enharmonic">＝ ${note.enharmonic}</div>`:'';
+  document.getElementById('mainDisplay').innerHTML=`
+    <div class="note-label-box" style="border:3px solid ${note.color}">
+      <div class="note-label-big" style="color:${note.color}">${note.label}</div>
+      <div class="note-label-kana">${note.kana}</div>
+      ${enharmonicHTML}
+    </div>
+    <div class="recorder-wrap">
+      <div class="recorder-title">🎵 おさえかた（ジャーマン式）</div>
+      ${buildRecorderSVG(note.holes, note.color, false)}
+      <div class="legend">
+        <div class="legend-item"><div class="legend-circle legend-closed"></div>おさえる</div>
+        <div class="legend-item"><div class="legend-circle legend-open"></div>あける</div>
+        <div class="legend-item"><div class="legend-circle legend-half"></div>ピンホール</div>
+      </div>
+    </div>
+    <div class="hint-box">
+      <div class="hint-title">💡 コツ</div>
+      <div class="hint-text">${note.hint.replace(/\n/g,'<br>')}</div>
+    </div>`;
+}
+
+/* ===== SCORE MODE ===== */
+
+// Build quick-input buttons
+(function buildQuickButtons(){
+  const qn = document.getElementById('quickNotes');
+  const naturals = [
+    ['ド','qb-do'],['レ','qb-re'],['ミ','qb-mi'],['ファ','qb-fa'],
+    ['ソ','qb-so'],['ラ','qb-ra'],['シ','qb-si'],
+    ['高いド','qb-do2'],['高いレ','qb-re2'],['高いミ','qb-mi2'],
+    ['高いファ','qb-fa2'],['高いソ','qb-so2'],['高いラ','qb-ra2'],
+  ];
+  const accidentals = [
+    ['ド♯','qb-acc'],['レ♯','qb-acc'],['ファ♯','qb-acc'],['ソ♯','qb-acc'],['ラ♯','qb-acc'],
+  ];
+  const all = [...naturals, ...accidentals, ['　','qb-sp']];
+  all.forEach(([name, cls])=>{
+    const b = document.createElement('button');
+    b.className = `quick-btn ${cls}`;
+    b.textContent = name;
+    b.onclick = ()=>{
+      const ta = document.getElementById('scoreInput');
+      const val = ta.value;
+      const needSpace = val.length>0 && val[val.length-1]!=='　' && val[val.length-1]!==' ';
+      if(name==='　') {
+        ta.value += '　';
+      } else {
+        ta.value += (needSpace?'　':'') + name;
+      }
+      autoResize(ta);
+      ta.focus();
+    };
+    qn.appendChild(b);
+  });
+})();
+
+function autoResize(ta){
+  ta.style.height='auto';
+  ta.style.height=Math.min(ta.scrollHeight,200)+'px';
+}
+
+let scoreNotes = [];
+let highlightIdx = -1;
+
+function generateScore(){
+  const input = document.getElementById('scoreInput').value;
+  const errDiv = document.getElementById('scoreError');
+  const resDiv = document.getElementById('scoreResult');
+  errDiv.style.display='none';
+  resDiv.innerHTML='';
+  closeHighlight();
+
+  if(!input.trim()){
+    errDiv.textContent='おとを にゅうりょく してください。';
+    errDiv.style.display='block'; return;
+  }
+  const {result, errors} = parseScore(input);
+  if(result.length===0){
+    errDiv.textContent='よめなかった おとが あります：'+errors.join('、');
+    errDiv.style.display='block'; return;
+  }
+  if(errors.length>0){
+    errDiv.textContent='⚠️ よめなかった おと（とばします）：'+errors.join('、');
+    errDiv.style.display='block';
+  }
+
+  scoreNotes = result;
+
+  // Build grid
+  const grid = document.createElement('div');
+  grid.className='score-grid';
+
+  result.forEach((noteName, idx)=>{
+    const note=NOTES[noteName];
+    const card=document.createElement('div');
+    card.className='score-card';
+    card.id=`sc-${idx}`;
+    card.innerHTML=`
+      <div class="sc-num">${idx+1}</div>
+      <div class="sc-name" style="color:${note.color}">${note.label}</div>
+      <div class="sc-recorder">${buildRecorderSVG(note.holes,note.color,true)}</div>`;
+    card.onclick=()=>showHighlight(idx);
+    grid.appendChild(card);
+  });
+
+  const infoBar=document.createElement('div');
+  infoBar.className='score-info-bar';
+  infoBar.innerHTML=`<div class="score-count">ぜんぶで <span>${result.length}</span> おん</div>
+    <div style="font-size:0.8rem;color:#bbb">カードを タップすると くわしく みられます</div>`;
+
+  // Print bar
+  const printBar=document.createElement('div');
+  printBar.className='print-bar';
+  printBar.innerHTML=`
+    <span style="font-size:0.88rem;color:#8866cc;white-space:nowrap">🖨️ いんさつ</span>
+    <input class="print-title-input" id="printTitleInput" type="text"
+      placeholder="タイトル（れい：きらきら星）"
+      oninput="document.getElementById('printTitle').textContent=this.value||'リコーダー うんざしシート'"/>
+    <button class="print-btn" onclick="doPrint()">🖨️ いんさつする</button>`;
+
+  resDiv.appendChild(infoBar);
+  resDiv.appendChild(printBar);
+  resDiv.appendChild(grid);
+}
+
+function clearScore(){
+  document.getElementById('scoreInput').value='';
+  document.getElementById('scoreError').style.display='none';
+  document.getElementById('scoreResult').innerHTML='';
+  autoResize(document.getElementById('scoreInput'));
+  scoreNotes=[];
+  closeHighlight();
+}
+
+/* ----- Highlight panel ----- */
+function showHighlight(idx){
+  highlightIdx=idx;
+  // remove old highlight
+  document.querySelectorAll('.score-card').forEach(c=>c.classList.remove('highlighted'));
+  const card=document.getElementById(`sc-${idx}`);
+  if(card){
+    card.classList.add('highlighted');
+    card.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  }
+  const note=NOTES[scoreNotes[idx]];
+  document.getElementById('hpName').textContent=note.label;
+  document.getElementById('hpName').style.color=note.color;
+  document.getElementById('hpKana').textContent=note.kana+(note.enharmonic?' ／ '+note.enharmonic:'');
+  document.getElementById('hpHint').innerHTML=note.hint.replace(/\n/g,'<br>');
+  document.getElementById('hpRecorder').innerHTML=buildRecorderSVG(note.holes,note.color,false);
+  document.getElementById('hpRecorder').querySelector('svg').style.maxWidth='120px';
+  document.getElementById('highlightPanel').classList.add('active');
+}
+
+function closeHighlight(){
+  document.querySelectorAll('.score-card').forEach(c=>c.classList.remove('highlighted'));
+  document.getElementById('highlightPanel').classList.remove('active');
+  highlightIdx=-1;
+}
+
+function navHighlight(dir){
+  if(scoreNotes.length===0) return;
+  const next=(highlightIdx+dir+scoreNotes.length)%scoreNotes.length;
+  showHighlight(next);
+}
+
+// Keyboard navigation
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('highlightPanel').classList.contains('active')){
+    if(e.key==='ArrowRight') navHighlight(1);
+    if(e.key==='ArrowLeft')  navHighlight(-1);
+    if(e.key==='Escape')     closeHighlight();
+  }
+});
+
+/* ===== PRINT ===== */
+function doPrint(){
+  closeHighlight();
+  // Update print title from input
+  const inp = document.getElementById('printTitleInput');
+  if(inp){
+    const t = inp.value.trim();
+    document.getElementById('printTitle').textContent = t || 'リコーダー うんざしシート';
+  }
+  window.print();
+}
+</script>
+</body>
+</html>
